@@ -16,8 +16,9 @@ Needs `tribe` on PATH. Tested with tmux 3.6. In `~/.tmux.conf`:
 While an editor has focus, the terminal's paste markers (`ESC [200~` and
 `ESC [201~`) are claimed as user keys. At the start of a paste, the client
 switches to key table `tribe-paste`, which forwards every key to the agent
-until the end marker. The agent gets an ordinary bracketed paste. Without an
-agent, or in any other pane, pastes work as before.
+until the end marker. The agent gets an ordinary bracketed paste followed by
+Enter, so the message is sent. Without an agent, or in any other pane, pastes
+work as before.
 
 ## Side effects
 

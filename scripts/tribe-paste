@@ -52,7 +52,8 @@ start() {
   fi
   # Any is every key of the paste; send-keys without keys sends that key
   tmux bind -T tribe-paste Any "send-keys -t $agent ; switch-client -T tribe-paste"
-  tmux bind -T tribe-paste User201 "send-keys -H -t $agent ${END[*]}"
+  # A paste to the agent is a message to it: Enter sends it
+  tmux bind -T tribe-paste User201 "send-keys -H -t $agent ${END[*]} 0d"
   tmux send-keys -H -t "$agent" "${START[@]}"
   tmux switch-client -c "$1" -T tribe-paste
 }
