@@ -19,7 +19,8 @@ Usage: $0 focus
 
 focus   claim the paste markers while the focused pane is an editor
 start   on a paste start marker in PANE: forward the paste to the nearest
-        agent through key table tribe-paste, else pass it on to PANE
+        agent through key table tribe-paste while the editor in PANE runs
+        commands (normal or visual mode); else pass it on to PANE
 EOF
 }
 
@@ -44,9 +45,23 @@ focus() {
   fi
 }
 
+# Is a paste in the editor in PANE a message to the agent? Only while the
+# human's keys run commands (normal or visual mode). While they type text
+# (insert mode, a prompt) the paste is text too, and an editor that doesn't
+# answer, e.g. suspended with Ctrl-Z, leaves the paste to the pane
+for_agent() {
+  local addr
+  local handler
+  local mode
+  addr=$(tribe get --id "$TMUX_PANE" addr) || return 1
+  handler=$(tribe get --id "$TMUX_PANE" handler) || return 1
+  mode=$(timeout 1 "$handler" "$addr" context | jq -er .mode) || return 1
+  [ "$mode" == normal -o "$mode" == visual ]
+}
+
 start() {
   local agent
-  if ! agent=$(tribe find agent); then
+  if ! agent=$(tribe find agent) || ! for_agent; then
     tmux send-keys -H -t "$TMUX_PANE" "${START[@]}"
     return 0
   fi

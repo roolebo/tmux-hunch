@@ -7,7 +7,7 @@ moves, even when the agent is in another window.
 
 ## Install
 
-Needs `tribe` on PATH. Tested with tmux 3.6. In `~/.tmux.conf`:
+Needs `tribe` 0.1.0 and `jq` on PATH. Tested with tmux 3.6. In `~/.tmux.conf`:
 
     run-shell /path/to/tmux-tribe/tribe.tmux
 
@@ -17,8 +17,13 @@ While an editor has focus, the terminal's paste markers (`ESC [200~` and
 `ESC [201~`) are claimed as user keys. At the start of a paste, the client
 switches to key table `tribe-paste`, which forwards every key to the agent
 until the end marker. The agent gets an ordinary bracketed paste followed by
-Enter, so the message is sent. Without an agent, or in any other pane, pastes
-work as before.
+Enter, so the message is sent.
+
+Only a paste in normal or visual mode goes to the agent. Pastes work as
+before in insert mode, at a prompt (e.g. Vim's command line), while the
+editor doesn't answer (e.g. suspended with Ctrl-Z), without an agent, and
+in any other pane. A modeless editor, such as Emacs or VS Code, is always
+typing text, so its pastes stay in the editor.
 
 ## Side effects
 
