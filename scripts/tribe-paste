@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+#
+# tribe-paste: forward a paste in an editor to the agent registered in tribe.
+#
+# Called by tribe.tmux. State lives in tmux: user-keys[200] and [201] hold
+# the claimed paste markers, key table tribe-paste forwards a paste. Never
+# prompts.
+#
+
+set -e
+
+START=(1b 5b 32 30 30 7e)
+END=(1b 5b 32 30 31 7e)
+
+usage() {
+  cat << EOF
+Usage: $0 focus
+       TMUX_PANE=PANE $0 start CLIENT
+
+focus   claim the paste markers while the focused pane is an editor
+start   on a paste start marker in PANE: forward the paste to the nearest
+        agent through key table tribe-paste, else pass it on to PANE
+EOF
+}
+
+focus() {
+  local client
+  local pane
+  local claimed
+  local editor=""
+  client=$(tmux list-clients -F '#{client_activity} #{client_name}' | sort -rn | head -1 | cut -d' ' -f2)
+  [ -n "$client" ] || return 0
+  pane=$(tmux display -p -c "$client" '#{pane_id}')
+  [ "$(tribe get --id "$pane" role)" == editor ] && editor=yes
+  claimed=$(tmux show -sv 'user-keys[200]' 2> /dev/null) || claimed=""
+  # Setting user-keys runs the after-set-option hook again: change only on
+  # a difference, so the second run stops here
+  if [ -n "$editor" -a -z "$claimed" ]; then
+    tmux set -s 'user-keys[200]' $'\e[200~'
+    tmux set -s 'user-keys[201]' $'\e[201~'
+  elif [ -z "$editor" -a -n "$claimed" ]; then
+    tmux set -su 'user-keys[200]'
+    tmux set -su 'user-keys[201]'
+  fi
+}
+
+start() {
+  local agent
+  if ! agent=$(tribe find agent); then
+    tmux send-keys -H -t "$TMUX_PANE" "${START[@]}"
+    return 0
+  fi
+  # Any is every key of the paste; send-keys without keys sends that key
+  tmux bind -T tribe-paste Any "send-keys -t $agent ; switch-client -T tribe-paste"
+  tmux bind -T tribe-paste User201 "send-keys -H -t $agent ${END[*]}"
+  tmux send-keys -H -t "$agent" "${START[@]}"
+  tmux switch-client -c "$1" -T tribe-paste
+}
+
+if [ "$1" == "-h" -o "$1" == "--help" ]; then
+  usage
+  exit 0
+fi
+
+if [ "$1" == focus -a $# -eq 1 ]; then
+  focus
+elif [ "$1" == start -a $# -eq 2 -a -n "$TMUX_PANE" ]; then
+  start "$2"
+else
+  usage >&2
+  exit 1
+fi
