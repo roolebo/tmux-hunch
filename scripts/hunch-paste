@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# tribe-paste: forward a paste in an editor to the agent registered in tribe.
+# hunch-paste: forward a paste in an editor to the agent registered in hunch.
 #
-# Called by tribe.tmux. State lives in tmux: user-keys[200] and [201] hold
-# the claimed paste markers, key table tribe-paste forwards a paste. Never
+# Called by hunch.tmux. State lives in tmux: user-keys[200] and [201] hold
+# the claimed paste markers, key table hunch-paste forwards a paste. Never
 # prompts.
 #
 
@@ -19,7 +19,7 @@ Usage: $0 focus
 
 focus   claim the paste markers while the focused pane is an editor
 start   on a paste start marker in PANE: forward the paste to the nearest
-        agent through key table tribe-paste while the editor in PANE runs
+        agent through key table hunch-paste while the editor in PANE runs
         commands (normal or visual mode); else pass it on to PANE
 EOF
 }
@@ -32,7 +32,7 @@ focus() {
   client=$(tmux list-clients -F '#{client_activity} #{client_name}' | sort -rn | head -1 | cut -d' ' -f2)
   [ -n "$client" ] || return 0
   pane=$(tmux display -p -c "$client" '#{pane_id}')
-  [ "$(tribe get --id "$pane" role)" == editor ] && editor=yes
+  [ "$(hunch get --id "$pane" role)" == editor ] && editor=yes
   claimed=$(tmux show -sv 'user-keys[200]' 2> /dev/null) || claimed=""
   # Setting user-keys runs the after-set-option hook again: change only on
   # a difference, so the second run stops here
@@ -53,24 +53,24 @@ for_agent() {
   local addr
   local handler
   local mode
-  addr=$(tribe get --id "$TMUX_PANE" addr) || return 1
-  handler=$(tribe get --id "$TMUX_PANE" handler) || return 1
+  addr=$(hunch get --id "$TMUX_PANE" addr) || return 1
+  handler=$(hunch get --id "$TMUX_PANE" handler) || return 1
   mode=$(timeout 1 "$handler" "$addr" context | jq -er .mode) || return 1
   [ "$mode" == normal -o "$mode" == visual ]
 }
 
 start() {
   local agent
-  if ! agent=$(tribe find agent) || ! for_agent; then
+  if ! agent=$(hunch find agent) || ! for_agent; then
     tmux send-keys -H -t "$TMUX_PANE" "${START[@]}"
     return 0
   fi
   # Any is every key of the paste; send-keys without keys sends that key
-  tmux bind -T tribe-paste Any "send-keys -t $agent ; switch-client -T tribe-paste"
+  tmux bind -T hunch-paste Any "send-keys -t $agent ; switch-client -T hunch-paste"
   # A paste to the agent is a message to it: Enter sends it
-  tmux bind -T tribe-paste User201 "send-keys -H -t $agent ${END[*]} 0d"
+  tmux bind -T hunch-paste User201 "send-keys -H -t $agent ${END[*]} 0d"
   tmux send-keys -H -t "$agent" "${START[@]}"
-  tmux switch-client -c "$1" -T tribe-paste
+  tmux switch-client -c "$1" -T hunch-paste
 }
 
 if [ "$1" == "-h" -o "$1" == "--help" ]; then
